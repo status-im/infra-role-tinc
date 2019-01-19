@@ -1,0 +1,64 @@
+---
+- name: Check for host private key
+  tags: ['role::bootstrap:tinc']
+  stat:
+    path: '{{ tinc_network_path }}/rsa_key.priv'
+  register: priv_key_file
+
+- name: Generate new key pair
+  tags: ['role::bootstrap:tinc']
+  command: tincd -n status.im -K2048
+  when: not priv_key_file.stat.exists
+  register: keys
+
+- name: Check if config exists already
+  tags: ['role::bootstrap:tinc']
+  stat: 
+    path: '{{ tinc_network_path }}/tinc.conf'
+  register: tinc_config
+
+- name: Move public key
+  tags: ['role::bootstrap:tinc']
+  copy:
+    remote_src: true
+    src: '{{ tinc_network_path }}/hosts/{{ tinc_host_filename }}'
+    dest: '{{ tinc_network_path }}/rsa_key.pub'
+  when: keys.changed and tinc_config.stat.exists
+
+- name: Generate config files for hosts and network
+  tags: ['role::bootstrap:tinc']
+  command: '{{ tinc_network_path }}/tinc-refresh'
+  register: generation
+  notify:
+    - restart tinc
+
+- name: Configure a cron job to refresh Tinc peers
+  tags: ['role::bootstrap:tinc']
+  cron:
+    name: Tinc Peer Refresh
+    minute: '*/30'
+    user: root
+    job: '{{ tinc_network_path }}/tinc-refresh'
+
+- name: Read public key file
+  tags: ['role::bootstrap:tinc']
+  slurp:
+    src: '{{ tinc_network_path }}/rsa_key.pub'
+  register: pub_key_file
+
+- name: Read host VPN IP file
+  tags: ['role::bootstrap:tinc']
+  slurp:
+    src: '{{ tinc_network_path }}/tinc-ip'
+  register: tinc_ip_file
+
+# this should make available ip under: ansible_local.tinc.vpn_ip 
+- name: Create Ansible tinc fact
+  tags: ['role::bootstrap:tinc']
+  copy:
+    content: |
+      #!/usr/bin/env bash
+      VPN_IP=$(cat {{ tinc_network_path }}/tinc-ip)
+      echo "{\"vpn_ip\":\"${VPN_IP}\"}"
+    dest: /etc/ansible/facts.d/tinc.fact
+    mode: 0755

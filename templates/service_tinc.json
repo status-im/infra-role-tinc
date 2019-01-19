@@ -1,0 +1,25 @@
+{
+  "service": {
+    "name": "tinc",
+    "tags": ["vpn"],
+    "port": 655,
+    "meta": {
+      "tinc_pub_key": {{ pub_key_file.content | b64decode | to_json }},
+      "tinc_address": {{ tinc_ip_file.content | b64decode | to_json }}
+    },
+    "tags": [
+      "{{ data_center }}",
+      "{{ env }}.{{ stage }}",
+      "vpn", "tinc"
+    ],
+    "checks": [
+      {
+        "id": "tinc-health",
+        "name": "Tinc VPN Availability",
+        "http": "http://{{ hostname }}.tinc:1655/health",
+        "interval": "60s",
+        "timeout": "2s"
+      }
+    ]
+  }
+}

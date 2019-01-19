@@ -1,0 +1,18 @@
+---
+- name: Copy over Tinc health check config
+  tags: ['role::bootstrap:tinc']
+  copy:
+    src: tinc-health.conf
+    dest: /etc/nginx/sites-available/tinc-health.conf
+    mode: 0755
+
+- name: Symlink Tinc health check
+  tags: ['role::bootstrap:tinc']
+  file:
+    src: /etc/nginx/sites-available/tinc-health.conf
+    dest: /etc/nginx/sites-enabled/tinc-health.conf
+    state: link
+
+- name: Restart nginx
+  tags: ['role::bootstrap:tinc']
+  service: name=nginx state=restarted

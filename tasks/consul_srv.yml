@@ -1,0 +1,8 @@
+---
+- name: Create Consul service definition
+  tags: ['role::bootstrap:tinc']
+  template:
+    src: service_tinc.json
+    dest: /docker/consul/config/service_tinc.json
+  notify:
+    - reload consul

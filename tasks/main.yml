@@ -1,0 +1,16 @@
+---
+- include_tasks: install.yml
+  tags: ['role::bootstrap:tinc']
+- include_tasks: config.yml
+  tags: ['role::bootstrap:tinc']
+- include_tasks: health.yml
+  tags: ['role::bootstrap:tinc']
+- include_tasks: consul_srv.yml
+  tags: ['role::bootstrap:tinc']
+
+- name: Set Tinc IP as Ansible fact
+  tags: ['role::bootstrap:tinc']
+  set_fact:
+    ansible_local:
+      tinc:
+        vpn_ip: '{{ tinc_ip_file.content | b64decode }}'
