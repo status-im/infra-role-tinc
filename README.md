@@ -19,7 +19,7 @@ Here are the core files defining te setup of `status.im` network:
 
 In order to stay up-to-date with the rest of the network the Tinc server has to know about all of the hosts in the network and their public keys.
 
-To achieve that we run the `/etc/tinc/status.im/tinc-refresh` script which does the following:
+To achieve that we run the [`/etc/tinc/status.im/tinc-refresh`](/files/tinc-refresh) script which does the following:
 
 1. Queries the [Consul](https://www.consul.io/) catalog for all Tinc peers across all DCs.
 2. __OPTIONAL__: Assigns the current peer an address in the `hosts` dir and `tinc-up`.
