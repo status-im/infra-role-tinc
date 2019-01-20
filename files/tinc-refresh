@@ -1,0 +1,248 @@
+#!/usr/bin/env python2
+import re
+import sys
+import time
+import json
+import consul
+import socket
+import logging
+import urllib3
+import requests
+import argparse
+import ipaddress
+from subprocess import call
+from python_hosts import Hosts, HostsEntry
+# If we can't trust localhost there is no God.
+urllib3.disable_warnings()
+
+"""
+This script queries Consul for Tinc service metadata
+And constructs host config files for Tinc.
+"""
+
+tinc_config_template = """
+Name = {hostname}
+AddressFamily = ipv4
+Interface = tun0
+# Ping once every 3 minutes
+PingInterval = 180
+# Prioritize other processes
+ProcessPriority = low
+# Do not forward packets to other hosts
+# WARNING: Without these 1.0.34 has major CPU issues
+Forwarding = off
+DirectOnly = yes
+TunnelServer = yes
+
+{connect_to}
+""".strip()
+
+# this file is generated for every service in the catalog
+host_config_template = """
+Subnet = {vpn_address}/32
+Address = {pub_address}
+
+{pub_key}
+""".strip()
+
+# Setup logging
+log_format = '%(asctime)s [%(levelname)s] %(message)s'
+logging.basicConfig(level=logging.INFO, format=log_format)
+LOG = logging.getLogger(__name__)
+
+tinc_network_name = 'status.im'
+tinc_network_path = '/etc/tinc/' + tinc_network_name
+tinc_first_network = u'10.0.0.0'
+
+hostname = socket.gethostname()
+
+ca_path = '/certs/consul-ca.crt'
+key_path = '/certs/consul-client.key'
+cert_path = '/certs/consul-client.crt'
+cert = (cert_path, key_path)
+
+def to_filename(text):
+    return re.sub(r'[\-\.]', '_', text)
+
+def get_local_pub_key():
+    with open('{}/rsa_key.pub'.format(tinc_network_path), 'r') as f:
+        return f.read()
+
+def get_tinc_network(c):
+    # check the network address for this Data Center
+    _, rval = c.kv.get('tinc/network')
+    if rval is not None:
+        return unicode(rval['Value'], "utf-8")
+    
+    # otherwise we have to check all other DCs
+    dcs = c.catalog.datacenters()
+    networks = []
+    for dc in dcs:
+        _, rval = c.kv.get('tinc/network', dc=dc)
+        if rval is None:
+            continue
+        ip_addr = unicode(rval['Value'], "utf-8")
+        networks.append(ipaddress.ip_network(ip_addr))
+
+    if len(networks) == 0:
+        # if no network has an address yet to do default
+        highest_net = ipaddress.ip_network(tinc_first_network)
+    else:
+        # we pick the highest Tinc network address
+        highest_net = sorted(networks)[-1]
+
+    # bump 2nd octet of network address to get one for this DC
+    new_net_addr = highest_net.network_address + 2**16
+    # create new nework
+    new_network = ipaddress.ip_network(
+        new_net_addr.compressed + '/' + unicode(highest_net.prefixlen)
+    )
+    # update the k/v store with Tinc network address for this DC
+    c.kv.put('tinc/network', new_network.compressed)
+    return new_network
+
+def get_new_tinc_ip(c):
+    try:
+        # we lock to avoid getting the same IP as another host
+        ip_lock = c.session.create(name='tinc-ip-lock', ttl=10)
+        locked = c.kv.put('tinc/ip-lock', 'locked', acquire=ip_lock)
+        if not locked:
+            return False
+
+        # check current highest IP for Tinc in this DC
+        _, rval = c.kv.get('tinc/highest-ip')
+        if rval is not None:
+            highest_ip = unicode(rval['Value'], "utf-8")
+        else:
+            # if there is no highest IP we need to derive it from the network
+            network = get_tinc_network(c)
+            highest_ip = unicode(network.network_address)
+        
+        # increment, this is important especially when IP is a network addr
+        incremented_ip = str(ipaddress.ip_address(highest_ip) + 1)
+        # update the k/v store with the current highest IP
+        c.kv.put('tinc/highest-ip', incremented_ip)
+    finally:
+        if ip_lock:
+            # remember to disable the lock
+            c.kv.put('tinc/ip-lock', 'unlocked', release=ip_lock)
+            c.session.destroy(ip_lock)
+    return incremented_ip
+
+def retry_get_new_tinc_ip(c, retries_left=3):
+    while retries_left > 0:
+        rval = get_new_tinc_ip(c)
+        if rval is not False:
+            return rval
+        time.sleep(5)
+    raise 'Failed to get a new IP for this Tinc peer.'
+
+def add_host_config(service):
+    host_config = host_config_template.format(
+        pub_address=service['Address'],
+        vpn_address=service['ServiceMeta']['tinc_address'],
+        pub_key=service['ServiceMeta']['tinc_pub_key']
+    )
+
+    host_config_path = '{}/hosts/{}'.format(
+        tinc_network_path,
+        to_filename(service['Node'])
+    )
+
+    LOG.debug('Writing: {} - {}'.format(
+        host_config_path,
+        service['ServiceMeta']['tinc_address']
+    ))
+    with open(host_config_path, 'w') as f:
+        f.write(host_config)
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Automation for generating Tinc config.')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='Enable debug logging mode.')
+    return parser.parse_args()
+
+#------------------------------------------------------------------------------
+
+args = parse_args()
+
+if args.debug:
+    LOG.setLevel(logging.DEBUG)
+
+LOG.debug('Collecting Consul catalog info')
+c = consul.Consul(port=8500)
+
+dcs = c.catalog.datacenters()
+# get existing tinc peers from all Data Centers
+services = []
+for dc in dcs:
+    services += c.catalog.service('tinc', dc=dc)[1]
+# and our own public address
+_, node = c.catalog.node(hostname)
+
+if node is None:
+    LOG.error('Cannot find local host in catalog!')
+    sys.exit(1)
+
+# turn list into dict by node name
+services_dict = {s['Node']: s for s in services}
+
+# sort by dc, env, stage, and finally name
+sorted_services = sorted(
+    services, key=lambda s: (
+        s['Datacenter'],
+        s['NodeMeta']['env'],
+        s['NodeMeta']['stage'],
+        s['Node']
+    )
+)
+
+# if current host is not in the catalog add it
+if hostname not in services_dict:
+    services_dict[hostname] = {
+        'Node': hostname,
+        'Address': node['Node']['Address'],
+        'ServiceMeta': {
+            'tinc_address': retry_get_new_tinc_ip(c),
+            'tinc_pub_key': get_local_pub_key(),
+        }
+    }
+
+vpn_ip = services_dict[hostname]['ServiceMeta']['tinc_address']
+LOG.debug('Saving VNP IP: %s', vpn_ip)
+# save local host tinc IP for easy access by Ansible
+with open('{}/tinc-ip'.format(tinc_network_path), 'w') as f:
+    f.write(vpn_ip)
+
+LOG.debug('Updating main config file')
+with open('{}/tinc.conf'.format(tinc_network_path), 'w') as f:
+    f.write(tinc_config_template.format(
+        hostname=to_filename(hostname),
+        tinc_network_path=tinc_network_path,
+        connect_to='\n'.join([
+            'ConnectTo = '+to_filename(s['Node'])
+            for s in sorted_services
+            # Don't connect to yourself
+            if s['Node'] != hostname
+        ])
+    ))
+
+LOG.debug('Generating host config files')
+for service in sorted_services:
+    add_host_config(service)
+
+LOG.debug('Reloading tinc config')
+call('systemctl reload tinc@{}'.format(tinc_network_name).split())
+
+LOG.debug('Updating /etc/hosts')
+# update hosts file
+h = Hosts()
+h.add([HostsEntry(
+        entry_type='ipv4',
+        address=service['ServiceMeta']['tinc_address'],
+        names=[service['Node']+'.tinc']
+    ) for service in sorted_services], force=True)
+h.write()
+
+LOG.info('Completed Tinc config update')

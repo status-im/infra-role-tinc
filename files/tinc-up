@@ -1,0 +1,5 @@
+#!/bin/sh
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+VPN_IP=$(cat "${SCRIPTPATH}/tinc-ip")
+ifconfig $INTERFACE $VPN_IP netmask 255.0.0.0

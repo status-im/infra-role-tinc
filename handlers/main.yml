@@ -1,0 +1,6 @@
+---
+- name: restart tinc
+  service:
+    name: tinc@status.im
+    state: restarted
+    enabled: true
