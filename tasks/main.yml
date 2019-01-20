@@ -5,7 +5,7 @@
   tags: ['role::bootstrap:tinc']
 - include_tasks: health.yml
   tags: ['role::bootstrap:tinc']
-- include_tasks: consul_srv.yml
+- include_tasks: consul.yml
   tags: ['role::bootstrap:tinc']
 
 - name: Set Tinc IP as Ansible fact

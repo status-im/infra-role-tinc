@@ -5,3 +5,4 @@ tinc_network_name: ~
 tinc_config_path: '/etc/tinc'
 tinc_network_path: '{{ tinc_config_path }}/{{ tinc_network_name | mandatory }}'
 tinc_host_filename: '{{ hostname | regex_replace("[.-]", "_") }}'
+tinc_consul_service_path: '/docker/consul/config/service_tinc.json'

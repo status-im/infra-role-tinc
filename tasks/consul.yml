@@ -3,6 +3,6 @@
   tags: ['role::bootstrap:tinc']
   template:
     src: service_tinc.json
-    dest: /docker/consul/config/service_tinc.json
+    dest: '{{ tinc_consul_service_path }}'
   notify:
     - reload consul
