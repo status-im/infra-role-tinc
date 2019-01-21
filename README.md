@@ -3,6 +3,8 @@
 [Tinc](http://tinc-vpn.org/) is a Virtual Private Network (VPN) daemon that uses tunnelling and encryption to create a secure private network between hosts.
 Each host has it's own public and private key which is used to authenticate them and encrypt the traffic.
 
+__WARNING:__ This role __assumes__ that Consul is available under `localhost:8500`.
+
 # Setup
 
 Here are the core files defining te setup of `status.im` network:
