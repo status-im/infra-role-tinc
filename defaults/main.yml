@@ -1,6 +1,6 @@
 ---
 # Mandatory
-tinc_network_name: ~
+tinc_network_name: status.im
 
 tinc_config_path: '/etc/tinc'
 tinc_network_path: '{{ tinc_config_path }}/{{ tinc_network_name | mandatory }}'
