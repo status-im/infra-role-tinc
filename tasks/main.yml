@@ -1,17 +1,17 @@
 ---
 - include_tasks: install.yml
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:install']
 - include_tasks: config.yml
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
 - include_tasks: health.yml
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:health']
 - include_tasks: consul.yml
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:consul']
 - include_tasks: firewall.yml
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:firewall']
 
 - name: Set Tinc IP as Ansible fact
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:fact']
   set_fact:
     ansible_local:
       tinc:

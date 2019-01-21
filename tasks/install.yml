@@ -1,24 +1,24 @@
 ---
 - name: Install tinc VPN
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:install']
   apt:
     pkg: tinc
 
 - name: Create the hosts dir
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:install']
   file:
     path: '{{ tinc_network_path }}/hosts'
     state: directory
 
 - name: Define default network
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:install']
   lineinfile:
     path: /etc/tinc/nets.boot
     regexp: '^{{ tinc_network_name }}$'
     line: '{{ tinc_network_name }}'
 
 - name: Copy up, down, & refresh scritps
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:install']
   copy:
     src: '{{ item }}'
     dest: '{{ tinc_network_path }}/{{ item }}'

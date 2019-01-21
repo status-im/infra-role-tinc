@@ -1,7 +1,7 @@
 ---
 # Enable connections from the Tinc VPN `tun0` interface
 - name: Enable VPN connections
-  tags: ['role::bootstrap:firewall']
+  tags: ['role::tinc', 'role::tinc:firewall']
   iptables:
     comment: VPN connections
     chain: INPUT
@@ -9,7 +9,7 @@
     in_interface: tun0
 
 - name: Enable VPN connections for Docker
-  tags: ['role::bootstrap:firewall']
+  tags: ['role::tinc', 'role::tinc:firewall']
   iptables:
     chain: DOCKER-USER
     action: insert
@@ -18,7 +18,7 @@
     jump: ACCEPT
 
 - name: Enable various service ports
-  tags: ['role::bootstrap:firewall']
+  tags: ['role::tinc', 'role::tinc:firewall']
   iptables:
     chain: INPUT
     jump: ACCEPT

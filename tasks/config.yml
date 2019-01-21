@@ -1,24 +1,24 @@
 ---
 - name: Check for host private key
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   stat:
     path: '{{ tinc_network_path }}/rsa_key.priv'
   register: priv_key_file
 
 - name: Generate new key pair
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   command: tincd -n status.im -K2048
   when: not priv_key_file.stat.exists
   register: keys
 
 - name: Check if config exists already
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   stat: 
     path: '{{ tinc_network_path }}/tinc.conf'
   register: tinc_config
 
 - name: Move public key
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   copy:
     remote_src: true
     src: '{{ tinc_network_path }}/hosts/{{ tinc_host_filename }}'
@@ -26,14 +26,14 @@
   when: keys.changed and tinc_config.stat.exists
 
 - name: Generate config files for hosts and network
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   command: '{{ tinc_network_path }}/tinc-refresh'
   register: generation
   notify:
     - restart tinc
 
 - name: Configure a cron job to refresh Tinc peers
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   cron:
     name: Tinc Peer Refresh
     minute: '*/30'
@@ -41,20 +41,20 @@
     job: '{{ tinc_network_path }}/tinc-refresh'
 
 - name: Read public key file
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   slurp:
     src: '{{ tinc_network_path }}/rsa_key.pub'
   register: pub_key_file
 
 - name: Read host VPN IP file
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   slurp:
     src: '{{ tinc_network_path }}/tinc-ip'
   register: tinc_ip_file
 
 # this should make available ip under: ansible_local.tinc.vpn_ip 
 - name: Create Ansible tinc fact
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:config']
   copy:
     content: |
       #!/usr/bin/env bash

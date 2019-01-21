@@ -1,6 +1,6 @@
 ---
 - name: Create Consul service definition
-  tags: ['role::bootstrap:tinc']
+  tags: ['role::tinc', 'role::tinc:consul']
   template:
     src: service_tinc.json
     dest: '{{ tinc_consul_service_path }}'
