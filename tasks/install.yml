@@ -16,6 +16,7 @@
     path: /etc/tinc/nets.boot
     regexp: '^{{ tinc_network_name }}$'
     line: '{{ tinc_network_name }}'
+    state: present
 
 - name: Copy up, down, & refresh scritps
   tags: ['role::tinc', 'role::tinc:install']
