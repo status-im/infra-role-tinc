@@ -1,0 +1,7 @@
+---
+- name: Make sure the service is enabled and restarted
+  tags: ['role::tinc', 'role::tinc:service']
+  service:
+    name: 'tinc@{{ tinc_network_name }}.service'
+    state: restarted
+    enabled: true

@@ -3,6 +3,8 @@
   tags: ['role::tinc', 'role::tinc:install']
 - include_tasks: config.yml
   tags: ['role::tinc', 'role::tinc:config']
+- include_tasks: service.yml
+  tags: ['role::tinc', 'role::tinc:service']
 - include_tasks: health.yml
   tags: ['role::tinc', 'role::tinc:health']
 - include_tasks: consul.yml
