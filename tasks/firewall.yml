@@ -7,6 +7,8 @@
     chain: INPUT
     jump: ACCEPT
     in_interface: tun0
+  notify:
+    - Save iptables rules
 
 - name: Enable VPN connections for Docker
   tags: ['role::tinc', 'role::tinc:firewall']
@@ -16,6 +18,8 @@
     comment: VPN connections
     in_interface: tun0
     jump: ACCEPT
+  notify:
+    - Save iptables rules
 
 - name: Enable various service ports
   tags: ['role::tinc', 'role::tinc:firewall']
@@ -29,3 +33,5 @@
   with_items:
     - { "port": 655,  "cmt": "Tinc VPN TCP" }
     - { "port": 655,  "cmt": "Tinc VPN UDP", "prot": "udp" }
+  notify:
+    - Save iptables rules
