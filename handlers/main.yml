@@ -1,9 +1,0 @@
----
-- name: restart tinc
-  service:
-    name: 'tinc@{{ tinc_network_name }}'
-    state: restarted
-    enabled: true
-
-- name: Save iptables rules
-  shell: iptables-save > /etc/iptables/rules.v4

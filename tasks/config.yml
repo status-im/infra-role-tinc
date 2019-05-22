@@ -29,8 +29,6 @@
   tags: ['role::tinc', 'role::tinc:config']
   command: '{{ tinc_network_path }}/tinc-refresh'
   register: generation
-  notify:
-    - restart tinc
 
 - name: Configure a cron job to refresh Tinc peers
   tags: ['role::tinc', 'role::tinc:config']
