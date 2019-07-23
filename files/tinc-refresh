@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import re
 import sys
 import time
@@ -72,7 +72,7 @@ def get_tinc_network(c):
     # check the network address for this Data Center
     _, rval = c.kv.get('tinc/network')
     if rval is not None:
-        return unicode(rval['Value'], "utf-8")
+        return str(rval['Value'], "utf-8")
     
     # otherwise we have to check all other DCs
     dcs = c.catalog.datacenters()
@@ -81,7 +81,7 @@ def get_tinc_network(c):
         _, rval = c.kv.get('tinc/network', dc=dc)
         if rval is None:
             continue
-        ip_addr = unicode(rval['Value'], "utf-8")
+        ip_addr = str(rval['Value'], "utf-8")
         networks.append(ipaddress.ip_network(ip_addr))
 
     if len(networks) == 0:
@@ -95,7 +95,7 @@ def get_tinc_network(c):
     new_net_addr = highest_net.network_address + 2**16
     # create new nework
     new_network = ipaddress.ip_network(
-        new_net_addr.compressed + '/' + unicode(highest_net.prefixlen)
+        new_net_addr.compressed + '/' + str(highest_net.prefixlen)
     )
     # update the k/v store with Tinc network address for this DC
     c.kv.put('tinc/network', new_network.compressed)
@@ -112,11 +112,11 @@ def get_new_tinc_ip(c):
         # check current highest IP for Tinc in this DC
         _, rval = c.kv.get('tinc/highest-ip')
         if rval is not None:
-            highest_ip = unicode(rval['Value'], "utf-8")
+            highest_ip = str(rval['Value'], "utf-8")
         else:
             # if there is no highest IP we need to derive it from the network
             network = get_tinc_network(c)
-            highest_ip = unicode(network.network_address)
+            highest_ip = str(network.network_address)
         
         # increment, this is important especially when IP is a network addr
         incremented_ip = str(ipaddress.ip_address(highest_ip) + 1)
