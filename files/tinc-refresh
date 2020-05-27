@@ -156,6 +156,16 @@ def add_host_config(service):
     with open(host_config_path, 'w') as f:
         f.write(host_config)
 
+def gen_consul_service(hostname, node, consul):
+    return {
+        'Node': hostname,
+        'Address': node['Node']['Address'],
+        'ServiceMeta': {
+            'tinc_address': retry_get_new_tinc_ip(consul),
+            'tinc_pub_key': get_local_pub_key(),
+        }
+    }
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Automation for generating Tinc config.')
@@ -200,15 +210,17 @@ sorted_services = sorted(
 
 # if current host is not in the catalog add it
 if hostname not in services_dict:
-    services_dict[hostname] = {
-        'Node': hostname,
-        'Address': node['Node']['Address'],
-        'ServiceMeta': {
-            'tinc_address': retry_get_new_tinc_ip(c),
-            'tinc_pub_key': get_local_pub_key(),
-        }
-    }
+    LOG.debug('New Tinc Service detected')
+    services_dict[hostname] = gen_consul_service(hostname, node, c)
+else:
+    service_meta = services_dict[hostname]['ServiceMeta']
+    # If host is being re-created it can still exist in
+    # Consul with old IP and incorrect RSA public key.
+    if service_meta['tinc_pub_key'] != get_local_pub_key():
+        LOG.debug('Re-creating Tinc Service')
+        services_dict[hostname] = gen_consul_service(hostname, node, c)
 
+# And create an IP for the host
 vpn_ip = services_dict[hostname]['ServiceMeta']['tinc_address']
 LOG.debug('Saving VNP IP: %s', vpn_ip)
 # save local host tinc IP for easy access by Ansible
