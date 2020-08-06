@@ -18,11 +18,13 @@
     line: '{{ tinc_network_name }}'
     state: present
 
-- name: Install script dependencies
+- name: Install python dependencies
   tags: ['role::tinc', 'role::tinc:install']
-  apt:
-    pkg:
-      - python3-consul
+  pip:
+    name:
+      - python-hosts
+      - python-consul
+    executable: /usr/bin/pip3
 
 - name: Copy up, down, & refresh scritps
   tags: ['role::tinc', 'role::tinc:install']
