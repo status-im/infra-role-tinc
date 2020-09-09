@@ -4,5 +4,6 @@
   template:
     src: service_tinc.json
     dest: '{{ tinc_consul_service_path }}'
+    mode: 0644
   notify:
     - reload consul
