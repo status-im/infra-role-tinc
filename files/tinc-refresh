@@ -5,11 +5,13 @@ import time
 import json
 import consul
 import socket
+import hashlib
 import logging
 import urllib3
 import requests
 import argparse
 import ipaddress
+from os.path import join
 from subprocess import call
 from python_hosts import Hosts, HostsEntry
 # If we can't trust localhost there is no God.
@@ -52,6 +54,7 @@ LOG = logging.getLogger(__name__)
 
 tinc_network_name = 'status.im'
 tinc_network_path = '/etc/tinc/' + tinc_network_name
+tinc_config_path = '{}/tinc.conf'.format(tinc_network_path)
 tinc_first_network = u'10.0.0.0'
 
 hostname = socket.gethostname()
@@ -67,6 +70,16 @@ def to_filename(text):
 def get_local_pub_key():
     with open('{}/rsa_key.pub'.format(tinc_network_path), 'r') as f:
         return f.read()
+
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    try:
+        with open(fname, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+    except FileNotFoundError:
+        return 'none'
+    return hash_md5.hexdigest()
 
 def get_tinc_network(c):
     # check the network address for this Data Center
@@ -137,16 +150,21 @@ def retry_get_new_tinc_ip(c, retries_left=3):
         time.sleep(5)
     raise 'Failed to get a new IP for this Tinc peer.'
 
-def add_host_config(service):
+# Wrapper for detecting file changes
+def check_file_change(mod_func):
+    def wrapper(file_path, data):
+        before = md5(file_path)
+        mod_func(file_path, data)
+        after = md5(file_path)
+        return before != after
+    return wrapper
+
+@check_file_change
+def add_host_config(host_config_path, service):
     host_config = host_config_template.format(
         pub_address=service['Address'],
         vpn_address=service['ServiceMeta']['tinc_address'],
         pub_key=service['ServiceMeta']['tinc_pub_key']
-    )
-
-    host_config_path = '{}/hosts/{}'.format(
-        tinc_network_path,
-        to_filename(service['Node'])
     )
 
     LOG.debug('Writing: {} - {}'.format(
@@ -155,6 +173,20 @@ def add_host_config(service):
     ))
     with open(host_config_path, 'w') as f:
         f.write(host_config)
+
+@check_file_change
+def write_config(config_path, services):
+    with open(config_path, 'w') as f:
+        f.write(tinc_config_template.format(
+            hostname=to_filename(hostname),
+            tinc_network_path=tinc_network_path,
+            connect_to='\n'.join([
+                'ConnectTo = '+to_filename(s['Node'])
+                for s in services
+                # Don't connect to yourself
+                if s['Node'] != hostname
+            ])
+        ))
 
 def gen_consul_service(hostname, node, consul):
     return {
@@ -228,21 +260,20 @@ with open('{}/tinc-ip'.format(tinc_network_path), 'w') as f:
     f.write(vpn_ip)
 
 LOG.debug('Updating main config file')
-with open('{}/tinc.conf'.format(tinc_network_path), 'w') as f:
-    f.write(tinc_config_template.format(
-        hostname=to_filename(hostname),
-        tinc_network_path=tinc_network_path,
-        connect_to='\n'.join([
-            'ConnectTo = '+to_filename(s['Node'])
-            for s in sorted_services
-            # Don't connect to yourself
-            if s['Node'] != hostname
-        ])
-    ))
+config_changed = write_config(tinc_config_path, sorted_services)
 
 LOG.debug('Generating host config files')
+hosts_changed = []
 for service in sorted_services:
-    add_host_config(service)
+    host_config_path = join(
+        tinc_network_path, 'hosts', to_filename(service['Node'])
+    )
+    hosts_changed.append(add_host_config(host_config_path, service))
+
+# Avoid reloading Tinc if possible
+if not config_changed and not any(hosts_changed):
+    LOG.info('No changes detected')
+    sys.exit(0)
 
 LOG.debug('Reloading tinc config')
 call('systemctl reload tinc@{}'.format(tinc_network_name).split())
