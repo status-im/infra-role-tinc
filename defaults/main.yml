@@ -6,3 +6,9 @@ tinc_config_path: '/etc/tinc'
 tinc_network_path: '{{ tinc_config_path }}/{{ tinc_network_name | mandatory }}'
 tinc_host_filename: '{{ hostname | regex_replace("[.-]", "_") }}'
 tinc_consul_service_path: '/etc/consul/service_tinc.json'
+
+# Timer for refreshing config
+tinc_timer_service_name: 'tinc-refresh'
+tinc_timer_frequency: 'hourly'
+tinc_timer_timeout: 120
+tinc_timer_user: 'root'

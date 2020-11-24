@@ -1,0 +1,12 @@
+[Unit]
+Description={{ tinc_timer_service_name }}
+Documentation=https://github.com/status-im/infra-role-tinc
+Requires=network.target
+After=network.target
+
+[Service]
+User={{ tinc_timer_user }}
+Type=oneshot
+ExecStart={{ tinc_network_path }}/tinc-refresh
+TimeoutStartSec={{ tinc_timer_timeout }}
+WorkingDirectory={{ tinc_network_path }}

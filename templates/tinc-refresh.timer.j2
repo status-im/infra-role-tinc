@@ -1,0 +1,9 @@
+[Unit]
+After=multi-user.target
+
+[Timer]
+OnCalendar={{ tinc_timer_frequency }}
+Persistent=yes
+
+[Install]
+WantedBy=default.target

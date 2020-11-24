@@ -30,7 +30,7 @@ To achieve that we run the [`/etc/tinc/status.im/tinc-refresh`](/files/tinc-refr
 5. Generates the files in `hosts` dir with public and VIP IP addresses and public key.
 6. Updates the `/etc/hosts` file with hostnames with the `.tinc` sufix.
 
-This process is configured to be repeated every 30 minutes via cron.
+This process is configured to be repeated hourly via a [systemd timer](https://www.freedesktop.org/software/systemd/man/systemd.timer.html).
 
 # Usage
 

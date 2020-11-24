@@ -1,0 +1,33 @@
+---
+- name: Drop old cron job for refreshing Tinc peers
+  tags: ['role::tinc', 'role::tinc:config']
+  cron:
+    name: 'Tinc Peer Refresh'
+    minute: '*/30'
+    state: 'absent'
+
+- name: Create tinc-refresh.service file
+  template:
+    src: 'tinc-refresh.service.j2'
+    dest: '/lib/systemd/system/{{ tinc_timer_service_name }}.service'
+    mode: 0644
+
+- name: Create tinc-refresh.timer file
+  template:
+    src: 'tinc-refresh.timer.j2'
+    dest: '/lib/systemd/system/{{ tinc_timer_service_name }}.timer'
+    mode: 0644
+
+- name: Reload systemctl
+  command: systemctl daemon-reload
+
+- name: (Re)start service
+  service:
+    name: '{{ tinc_timer_service_name }}.service'
+    enabled: true
+
+- name: Enable the timer
+  systemd:
+    name: '{{ tinc_timer_service_name }}.timer'
+    state: 'started'
+    enabled: true

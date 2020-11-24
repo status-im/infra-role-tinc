@@ -30,14 +30,6 @@
   command: '{{ tinc_network_path }}/tinc-refresh'
   register: generation
 
-- name: Configure a cron job to refresh Tinc peers
-  tags: ['role::tinc', 'role::tinc:config']
-  cron:
-    name: Tinc Peer Refresh
-    minute: '*/30'
-    user: root
-    job: '{{ tinc_network_path }}/tinc-refresh'
-
 - name: Read public key file
   tags: ['role::tinc', 'role::tinc:config']
   slurp:
