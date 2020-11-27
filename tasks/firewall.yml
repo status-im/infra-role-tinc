@@ -7,11 +7,13 @@
     chain: INPUT
     jump: ACCEPT
     in_interface: tun0
+  when: tinc_allow_incoming
 
 - name: Check if Docker is present
   stat:
     path: '/etc/docker/daemon.json'
   register: docker_config
+  when: tinc_allow_incoming
 
 - name: Enable VPN connections for Docker
   tags: ['role::tinc', 'role::tinc:firewall']
@@ -21,7 +23,7 @@
     comment: VPN connections
     in_interface: tun0
     jump: ACCEPT
-  when: docker_config.stat.exists
+  when: tinc_allow_incoming and docker_config.stat.exists
 
 - name: Enable various service ports
   tags: ['role::tinc', 'role::tinc:firewall']
