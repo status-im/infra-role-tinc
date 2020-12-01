@@ -24,7 +24,7 @@
     name:
       - python-hosts
       - python-consul
-    executable: /usr/bin/pip3
+    executable: pip3
 
 - name: Copy up, down, & refresh scritps
   tags: ['role::tinc', 'role::tinc:install']
