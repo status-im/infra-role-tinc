@@ -1,3 +1,5 @@
+### :warning: WARNING: This repository was made obsolete by [`infra-role-wireguard`](https://github.com/status-im/infra-role-wireguard).
+
 # Description
 
 [Tinc](http://tinc-vpn.org/) is a Virtual Private Network (VPN) daemon that uses tunnelling and encryption to create a secure private network between hosts.
